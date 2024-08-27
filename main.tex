@@ -1,0 +1,120 @@
+\documentclass{article}
+\usepackage{graphicx} % Required for inserting images
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\title{Barra Regression}
+\author{Yuze Zhou}
+\date{August 2024}
+
+\begin{document}
+
+
+\section{Factor Return Regression}
+\subsection{Barra Regression Formulation}
+\paragraph{$\cdot$}\textbf{Excess return} $\mathbf{er}_{t}$, where $\mathbf{er}_{t} = \mathbf{r}_{t} - rf_{t}$, $ \mathbf{r}_{t}$ is the stock return and $rf_{t}$ is the risk-free return; the default choice of which should be the 3-month treasury yield. 
+\paragraph{$\cdot$} \textbf{Factor Exposures} $\mathbf{x}_{s,t}$ the exposures to style factor $s$, $\mathbf{x}_{i,t}$ the exposures to industry factor $i$
+\paragraph{$\cdot$}\textbf{Specific Return} $\mathbf{\epsilon}_{t} = \mathbf{er}_{t} - \sum\limits_{s}\mathbf{x}_{s,t-1} f_{s,t} - \sum\limits_{i}\mathbf{x}_{i,t-1} f_{i, t}$, where $f_{s, t}$ is the factor return for style $s$ and $f_{i,t}$ is the factor return for style $i$ that are to be estimated at time $t$.
+\paragraph{$\cdot$} \textbf{Regression Weights} $\mathbf{w}_{j,t}$ is the corresponding regression weights for ticker $j$ at time $t$.
+\paragraph{}The target of Barra Regression is to obtain the estimates for factor returns via a weighted regression with certain constraints. The objective function of the regression model is to minimize the weighted sum of squares of the specific returns, which is:
+\begin{center}
+    $\min\limits_{f_{s,t}, f_{i,t}} \sum\limits_{j}w_{j,t} \epsilon_{j,t}^{2}$
+\end{center}
+\paragraph{}The corresponding constraints are applied to the industry factor returns only, where they are assumed to be cancelled out:
+\begin{center}
+    $\sum\limits_{i}f_{i,t} = 0$
+\end{center}
+\paragraph{}Denote $W_{t}$ as a diagonal matrix for regression weights such that $\mathbf{W}_{t} = diag(w_{t,j})$, $\mathbf{X}_{S,t} = [\mathbf{x}_{s,t} \forall s \in S]$ as the loading matrix for style factor exposures and $\mathbf{X}_{I,t} = [\mathbf{x}_{i, t}  \forall i \in I]$ as the loading matrix for industry factor exposures, we can re-write the regression problem in matrix form as:
+\begin{center}
+    $\min\limits_{F_{s,t}, F_{i,t}} \frac{1}{2} (r_{t+1} -\mathbf{X}_{S,t} F_{S,t}-\mathbf{X}_{I,t} F_{I,t})^{\tau} W_{t}  (r_{t+1} -\mathbf{X}_{S,t} F_{S,t}-\mathbf{X}_{I,t} F_{I,t})$ \\
+    $s.t.\quad \mathbf{1}^{\tau} F_{I,t} = 0$
+
+\end{center}
+\paragraph{}Rewrite the matrix as $\mathbf{X}_{t} = [\mathbf{X}_{S,t}, \mathbf{X}_{I,t}]$, $F_{t}^{\tau} = [F_{S,t}^{\tau}, F_{I,t}^{\tau}]$ and $\textbf{1}_{I}^{\tau} = [\textbf{0}_{|S|}^{\tau},\textbf{1}_{|I|}^{\tau}]$, we can formulate the problem as a standard quadratic programming:
+\begin{center}
+    $\min\limits_{F_{t}} \frac{1}{2}F_{t}^{t}\mathbf{X}_{t}W_{t}\mathbf{X}_{t}F_{t} - r_{t+1}^{\tau}W\mathbf{X}_{t}F_{t}$\\
+    $s.t. \quad \textbf{1}_{I}^{\tau} F_{t} = 0$
+\end{center}
+\paragraph{}The Barra Regression Model is essentially a \textbf{Quadratic Programming with Linear Constraints} problem, which have an explicit solution when the constraints are equality constraints.
+\subsection{Explicit Solutions}
+\paragraph{}For a quadratic programming problem with linear constraints:
+\begin{center}
+    $\min\limits_{x} \frac{1}{2}x^{\tau}Qx + p^{\tau}x$\\
+    $s.t. \quad A^{\tau}x = q$
+\end{center}
+\paragraph{}If $Q \succ 0$, namely,$Q$ is positive-definite and non-singular, we shall have and explicit solution such that:
+\begin{center}
+    $\hat{x} = -Q^{-1}p-Q^{-1}A(A^{\tau}QA)^{-1}A^{\tau}Q^{-1}p+Q^{-1}A(A^{\tau}QA)^{-1}q$
+\end{center}
+\paragraph{}If $Q$ is singular, in order to obtain $\hat{x}$, we need to solve the following linear system corresponding to the Lagrangian dual problem, which is:
+\begin{center}
+    $
+  \left[
+  \begin{array}{cc}
+     Q  & A \\
+      A^{\tau} & 0  
+  \end{array}
+  \right]
+  \left[
+  \begin{array}{c}
+       x \\
+       \lambda 
+  \end{array}
+  \right] =
+  \left[
+  \begin{array}{c}
+       -p  \\
+       q
+  \end{array}
+  \right]
+    $
+\end{center}
+\paragraph{}If the block matrix on the left hand side in the linear system above is still non-singular, then the optimal solution to this quadratic programming problem would not be unique.
+\section{Barra Factor Covariance Estimation}
+\paragraph{}After obtaining the factor returns $F_{t}$ at time $t$, we need to estimate the corresponding factor return covariance matrix $\Sigma_{t}$, which is actually constructed using the long-run covariance estimation. Assuming that we have window size $\tau$, where only $F_{t}, F_{t-1}, \cdots F_{t-\tau}$ are used for obtaining the covariance, a maximal lag of $l(\tau)$ for including auto-correlations and that all factor returns $F_{t}$ are centered with mean value removed:
+\begin{center}
+    $
+    \begin{aligned}
+    \tau\Sigma_{t} &= \sum\limits_{t-\tau \leq i,j, \leq t} \mathcal{K}(\frac{i-j}{l(\tau)}) F_{i}F_{j} \\
+    &=  \mathcal{K}(0) \sum\limits_{t-\tau \leq i,j, \leq t} F_{i}F_{i}^{\tau} +
+    \sum\limits_{k=1}^{l(\tau)} \mathcal{K}(\frac{k}{l(\tau)})(\sum\limits_{t-\tau \leq i-k < i \leq t}(F_{i}F_{i-k}^{\tau}+F_{i-k}F_{i}^{\tau}))
+    \end{aligned}
+    $
+\end{center}
+\paragraph{}The function $\mathcal{K}(\cdot)$ is a kernel function which should satisfy that $\mathcal{K}(0) = 1$, $\mathcal{K}(u) = 0 \quad |u| \geq 1$,  and $\mathcal{K}(\cdot)$ is even, continuous and differentiable almost everywhere. This is essentially using kernel density estimator to obtain the spectral density of time series at zero-frequency in the frequency domain. Moreover, for the maximal auto-correlation lag, $l(\tau)$, it should be relatively small compared to $\tau$, $l(\tau) = o(\tau)$.
+\paragraph{}In the Barra Model, the kernel function is chosen as the Bartlett-kernel function, which is equivalent to the one used in the Newey-West heteroskedastic covariance estimator in regression models. Specifically speaking, the Bartlett kernel function is:
+\begin{center}
+    $\mathcal{K}(u) = 1 - |u|$
+\end{center}
+\section{Specific Risk}
+\subsection{Specific Risk Estimation}
+\paragraph{}After obtaining the specific returns $\mathbf{\epsilon}_{t}$, we can instantly have the raw time-series based specific risk estimation $\mathcal{\sigma}_{t}^{TS}$, where for ticker $j$ $\sigma_{j,t}^{TS} = std(\epsilon_{j,t})$. In order to remove the outliers, we regress the raw estimators onto the factor exposures loading matrix:
+\begin{center}
+    $ln(\mathcal{\sigma}_{t}^{TS}) \sim \mathbf{X}_{t-1}\mathbf{\beta}_{t}$
+\end{center}
+\paragraph{}The structured specific risk $\mathbf{\sigma}_{t}^{STR}$ is then obtain as:
+\begin{center}
+    $\mathbf{\sigma}_{t}^{STR} = E_{0} \cdot exp(\mathbf{X}_{t-1}\mathbf{\beta}_{t})$
+\end{center}
+\paragraph{}We shall also have the blended specific risk estimator for ticker $j$ as:
+\begin{center}
+    $\hat{\sigma}_{j,t} = \gamma_{j} \sigma_{j,t}^{TS} + (1-\gamma_{j}) \sigma_{j,t}^{STR}$
+\end{center}
+\paragraph{}For most tickers, $\gamma_{j}$ is set with a value of 1 to retain as much information as possible. Only the tickers with abnormal specific risks (outliers) will be given a value $\gamma_{j}$ smaller than one, which serves the purpose of smoothing the values toward the structured specific risks.
+\subsection{Specific Risk Shrinkage}
+\paragraph{}The Bayesian shrinkage specific risk is the blended specific risk shrunk towards the market-cap weighted mean: \\
+\begin{center}
+    $\sigma_{j,t}^{SH} = v_{j,t}\bar{\sigma}_{t} + (1-v_{j,t}) \hat{\sigma}_{j,t}$
+\end{center}
+where $\bar{\sigma}_{t}$ is the corresponding market cap weighted mean of blended specific risk:
+\begin{center}
+    $\bar{\sigma}_{t} = \sum\limits_{j} m_{j,t}\hat{\sigma}_{j,t} $
+\end{center}
+\paragraph{}From where, the corresponding shrinkage intensity $v_{j,t}$ can be constructed as:
+\begin{center}
+    $v_{j,t} = \frac{q | \hat{\sigma}_{j,t} - \bar{\sigma}_{t}|}{\Delta_{t} +q | \hat{\sigma}_{j,t} - \bar{\sigma}_{t}|}$ \\
+\end{center}
+\begin{center}
+    $\Delta_{t} = \sqrt{\frac{\sum\limits_{j}(\hat{\sigma}_{j,t} - \bar{\sigma}_{t})^{2}}{n}}$
+\end{center}
+\paragraph{}In the actual implementation, $q$ is the parameter that requires careful tuning to control the level of shrinkage intensity, which decides how much weight should be put on the mean of specific risk for each individual ones.
+\end{document}
